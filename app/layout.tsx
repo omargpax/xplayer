@@ -3,8 +3,8 @@ import Footer from "../components/footer"
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: '7Adventist',
+  description: 'Created with v0+vercel',
   generator: 'v0.dev',
 }
 
