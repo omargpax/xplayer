@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import Footer from "../components/footer"
 import { useState, useRef, useEffect } from "react"
 import { Play, Pause, SkipBack, SkipForward, Music, ArrowLeft, Volume2, Heart } from "lucide-react"
 import { SearchBox } from "../components/search-box"
@@ -302,6 +302,8 @@ export default function Page() {
           </div>
         )}
       </div>
+
+       <Footer/>
 
       <style jsx>{`
         .slider::-webkit-slider-thumb {
