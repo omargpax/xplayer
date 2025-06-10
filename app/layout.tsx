@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import Footer from "../components/footer"
 
 export const metadata: Metadata = {
   title: '7Adventist',
@@ -14,7 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900">
+        {children}
+        <Footer/>
+      </body>
     </html>
   )
 }

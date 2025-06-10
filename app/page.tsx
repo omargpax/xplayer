@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-import Footer from "../components/footer"
 import { useState, useRef, useEffect } from "react"
 import { Play, Pause, SkipBack, SkipForward, Music, ArrowLeft, Volume2, Heart } from "lucide-react"
 import { SearchBox } from "../components/search-box"
@@ -135,7 +134,7 @@ export default function Page() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex flex-col text-white relative overflow-hidden">
+    <div className="flex flex-col text-white relative overflow-hidden">
       {/* Background Effects */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-400/20 via-transparent to-transparent"></div>
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
@@ -302,8 +301,6 @@ export default function Page() {
           </div>
         )}
       </div>
-
-       <Footer/>
 
       <style jsx>{`
         .slider::-webkit-slider-thumb {
