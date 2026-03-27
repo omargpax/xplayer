@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Music, Play, AlertTriangle } from 'lucide-react';
 
 interface UrlInputProps {
   onLoad: (url: string) => void;
@@ -20,7 +21,7 @@ export default function UrlInput({ onLoad, isLoading }: UrlInputProps) {
   const handleSubmit = () => {
     setError("");
     if (!url.trim()) {
-      setError("Paste a Spotify or YouTube URL 🎵");
+      setError("Paste a Spotify or YouTube URL");
       return;
     }
     if (!validateUrl(url)) {
@@ -35,8 +36,8 @@ export default function UrlInput({ onLoad, isLoading }: UrlInputProps) {
   };
 
   const examples = [
-    { label: "Youtube Playlist", icon: "▶", url: "https://youtube.com/playlist?list=..." },
-    { label: "Youtube song", icon: "♫", url: "youtube.com/watch?v=..." },
+    { label: "Youtube Playlist", icon: <span style={{display: 'inline-flex', alignItems: 'center'}}><Play size={14} /></span>, url: "https://youtube.com/playlist?list=..." },
+    { label: "Youtube song", icon: <span style={{display: 'inline-flex', alignItems: 'center'}}><Music size={14} /></span>, url: "youtube.com/watch?v=..." },
   ];
 
   return (
@@ -147,7 +148,7 @@ export default function UrlInput({ onLoad, isLoading }: UrlInputProps) {
         </button>
       </div>
 
-      {error && <div className="error-msg">⚠ {error}</div>}
+      {error && <div className="error-msg"><span style={{display: 'inline-flex', alignItems: 'center', gap: '4px'}}><AlertTriangle size={14} /> {error}</span></div>}
 
       <div className="url-hints">
         {examples.map((ex) => (

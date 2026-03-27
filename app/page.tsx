@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { Music } from 'lucide-react';
 import CatMascot from "@/components/CatMascot";
 import UrlInput from "@/components/UrlInput";
 import PlayerControls, { Track } from "@/components/PlayerControls";
@@ -51,7 +52,7 @@ export default function XPlayPage() {
   const createPlayer = useCallback((videoId: string) => {
     if (!ytReady || !ytContainerRef.current) return;
     if (playerRef.current) {
-      try { playerRef.current.destroy(); } catch {}
+      try { playerRef.current.destroy(); } catch { }
     }
     playerRef.current = new window.YT.Player(ytContainerRef.current, {
       height: "0",
@@ -91,7 +92,7 @@ export default function XPlayPage() {
         setCurrentTime(cur);
         setDuration(dur);
         setProgress(dur > 0 ? (cur / dur) * 100 : 0);
-      } catch {}
+      } catch { }
     }, 500);
   };
 
@@ -118,12 +119,12 @@ export default function XPlayPage() {
       try {
         const res = await fetch(`/api/playlist/youtube?url=${encodeURIComponent(url)}`);
 
-	const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await res.text(); // Ver el error real (HTML)
-        console.error("Respuesta no es JSON:", text);
-        throw new Error("El servidor no respondió con JSON. Revisa la consola.");
-      }
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await res.text(); // Ver el error real (HTML)
+          console.error("Respuesta no es JSON:", text);
+          throw new Error("El servidor no respondió con JSON. Revisa la consola.");
+        }
 
         const data = await res.json();
         if (!res.ok) {
@@ -201,7 +202,7 @@ export default function XPlayPage() {
   useEffect(() => {
     return () => {
       clearInterval(progressInterval.current);
-      try { playerRef.current?.destroy(); } catch {}
+      try { playerRef.current?.destroy(); } catch { }
     };
   }, []);
 
@@ -231,8 +232,8 @@ export default function XPlayPage() {
             #0d0d14;
         }
 	
-	a {font-weight:semibold;color:violet;}
-	a:hover{color:cyan;}
+	      a {font-weight:semibold;color:violet;}
+	      a:hover{color:cyan;}
 	
         /* Noise overlay */
         .bg::after {
@@ -333,8 +334,8 @@ export default function XPlayPage() {
           width: 260px; height: 260px;
           border-radius: 50%;
           background: ${isPlaying
-            ? "radial-gradient(circle, rgba(196,77,255,0.2) 0%, transparent 70%)"
-            : "radial-gradient(circle, rgba(100,100,150,0.1) 0%, transparent 70%)"};
+          ? "radial-gradient(circle, rgba(196,77,255,0.2) 0%, transparent 70%)"
+          : "radial-gradient(circle, rgba(100,100,150,0.1) 0%, transparent 70%)"};
           transition: background 0.8s ease;
           animation: ${isPlaying ? "auraPulse 1.2s ease-in-out infinite alternate" : "none"};
         }
@@ -436,19 +437,19 @@ export default function XPlayPage() {
       `}</style>
 
       {/* Hidden YT player */}
-      <div ref={ytContainerRef} style={{ position: "fixed", opacity: 0, pointerEvents: "none", top: "-9999px" }}/>
+      <div ref={ytContainerRef} style={{ position: "fixed", opacity: 0, pointerEvents: "none", top: "-9999px" }} />
 
-      <div className="bg"/>
+      <div className="bg" />
       <div className="app">
         {/* Header */}
         <header className="header">
-          <div className="logo">🎵</div>
+          <div className="logo"><Music size={24} /></div>
           <div>
             <div className="logo-text">XPlay</div>
             <div className="logo-sub">Music Player</div>
           </div>
           <div className="header-right">
-            <div className="status-dot"/>
+            <div className="status-dot" />
             <span className="status-label">
               {isPlaying ? "Now Playing" : tracks.length > 0 ? "Paused" : "Idle"}
             </span>
@@ -461,10 +462,10 @@ export default function XPlayPage() {
           <div className="mascot-col">
             <div className="mascot-stage">
               <div className="aura">
-                <CatMascot isPlaying={isPlaying}/>
+                <CatMascot isPlaying={isPlaying} />
               </div>
               <span className="mascot-label">
-                {isPlaying ? "🎵 Vibing..." : tracks.length > 0 ? "😢 Paused..." : "Waiting for music..."}
+                {isPlaying ? <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px'}}><Music size={16} /> Vibing...</span> : tracks.length > 0 ? "Paused..." : "Waiting for music..."}
               </span>
               {current && (
                 <div className="current-track-label">
@@ -479,7 +480,7 @@ export default function XPlayPage() {
           <div className="controls-col">
             <div className="cmd-section">
               <div className="cmd-label">▸ Load Playlist</div>
-              <UrlInput onLoad={handleLoadUrl} isLoading={isLoading}/>
+              <UrlInput onLoad={handleLoadUrl} isLoading={isLoading} />
             </div>
 
             {error && <div className="error-banner">⚠ {error}</div>}
@@ -491,7 +492,7 @@ export default function XPlayPage() {
                 </div>
                 <div className="cmd-example">
                   <span className="arg">youtube.com/watch?v=...</span>
-                </div> 
+                </div>
                 <div className="cmd-example">
                   <span className="arg">Spotify coming soon - bcause no money</span>
                 </div>

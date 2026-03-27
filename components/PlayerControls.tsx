@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Play, Pause, SkipBack, SkipForward, Music } from 'lucide-react';
 
 export interface Track {
   id: string;
@@ -220,7 +221,7 @@ export default function PlayerControls({
         <div className="now-playing">
           {current.thumbnail
             ? <img className="track-thumb" src={current.thumbnail} alt={current.title}/>
-            : <div className="track-thumb-placeholder">🎵</div>
+            : <div className="track-thumb-placeholder"><Music size={22} /></div>
           }
           <div className="track-info">
             <div className="track-title">{current.title}</div>
@@ -248,13 +249,13 @@ export default function PlayerControls({
       {/* Controls */}
       <div className="controls-row">
         <button className="ctrl-btn ctrl-sm" onClick={onPrev} title="Previous">
-          ⏮
+          <SkipBack size={16} />
         </button>
         <button className="ctrl-btn ctrl-main" onClick={onPlayPause} title={isPlaying ? "Pause" : "Play"}>
-          {isPlaying ? "⏸" : "▶"}
+          {isPlaying ? <Pause size={22} /> : <Play size={22} />}
         </button>
         <button className="ctrl-btn ctrl-sm" onClick={onNext} title="Next">
-          ⏭
+          <SkipForward size={16} />
         </button>
       </div>
 
@@ -278,7 +279,7 @@ export default function PlayerControls({
 		    </div>
 		  ) : (
 		    <span className={`q-num ${i === currentIndex ? "playing" : ""}`}>
-		      {i === currentIndex ? "♪" : `${i + 1}`}
+		      {i === currentIndex ? <Music size={11} /> : `${i + 1}`}
 		    </span>
 		  )}
 		  <span className={`q-title ${i === currentIndex ? "active" : ""}`}>{t.title}</span>
