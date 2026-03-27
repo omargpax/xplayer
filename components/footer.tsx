@@ -4,7 +4,7 @@ import type { FC } from "react"
 
 const Footer: FC = () => {
     return (
-        <footer className="py-6 text-center mt-auto bg-transparent text-white">
+        <footer className="py-6 text-center mt-auto bg-transparent text-white z-9">
             <Link
                 href="https://omargpax.vercel.app"
                 target="_blank"

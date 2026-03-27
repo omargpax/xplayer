@@ -1,327 +1,524 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useRef, useEffect } from "react"
-import { Play, Pause, SkipBack, SkipForward, Music, ArrowLeft, Volume2, Heart } from "lucide-react"
-import { SearchBox } from "../components/search-box"
-import { SongListItem } from "../components/song-list-item"
-import { ProgressBar } from "../components/progress-bar"
+import { useState, useRef, useCallback, useEffect } from "react";
+import CatMascot from "@/components/CatMascot";
+import UrlInput from "@/components/UrlInput";
+import PlayerControls, { Track } from "@/components/PlayerControls";
 
-// Sample song data
-const sampleSongs = [
-  { id: "1", title: "Ethereal Dreams", number: "#N12", duration: 240 },
-  { id: "2", title: "Cosmic Journey", number: "#N13", duration: 195 },
-  { id: "3", title: "Neon Nights", number: "#N14", duration: 210 },
-  { id: "4", title: "Digital Sunset", number: "#N15", duration: 185 },
-  { id: "5", title: "Velvet Skies", number: "#N16", duration: 225 },
-]
+// ─── Detect URL type ─────────────────────────────────────────────────────────
+function detectSource(url: string): "youtube" | "spotify" | "unknown" {
+  if (/open\.spotify\.com/i.test(url)) return "spotify";
+  if (/youtube\.com|youtu\.be/i.test(url)) return "youtube";
+  return "unknown";
+}
 
-export default function Page() {
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [showPlayer, setShowPlayer] = useState(false)
-  const [currentSong, setCurrentSong] = useState(sampleSongs[0])
-  const [filteredSongs, setFilteredSongs] = useState(sampleSongs)
-  const [volume, setVolume] = useState(0.7)
-  const [isLiked, setIsLiked] = useState(false)
-  const audioRef = useRef<HTMLAudioElement>(null)
+// ─── YouTube iframe embed player hook ────────────────────────────────────────
+// Uses YouTube IFrame API for actual playback
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
 
+export default function XPlayPage() {
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [loadedUrl, setLoadedUrl] = useState("");
+
+  const playerRef = useRef<any>(null);
+  const ytContainerRef = useRef<HTMLDivElement>(null);
+  const progressInterval = useRef<any>(null);
+  const [ytReady, setYtReady] = useState(false);
+
+  // ── Load YouTube IFrame API ────────────────────────────────────────────────
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
+    if (window.YT && window.YT.Player) { setYtReady(true); return; }
+    const script = document.createElement("script");
+    script.src = "https://www.youtube.com/iframe_api";
+    script.async = true;
+    document.body.appendChild(script);
+    window.onYouTubeIframeAPIReady = () => setYtReady(true);
+  }, []);
 
-    const updateTime = () => {
-      setCurrentTime(audio.currentTime)
+  // ── Create/destroy YT player ───────────────────────────────────────────────
+  const createPlayer = useCallback((videoId: string) => {
+    if (!ytReady || !ytContainerRef.current) return;
+    if (playerRef.current) {
+      try { playerRef.current.destroy(); } catch {}
+    }
+    playerRef.current = new window.YT.Player(ytContainerRef.current, {
+      height: "0",
+      width: "0",
+      videoId,
+      playerVars: { autoplay: 1, controls: 0 },
+      events: {
+        onReady: (e: any) => {
+          e.target.playVideo();
+          setIsPlaying(true);
+          startProgressTimer();
+        },
+        onStateChange: (e: any) => {
+          // 0 = ended, 1 = playing, 2 = paused
+          if (e.data === window.YT.PlayerState.ENDED) {
+            handleNext();
+          }
+          if (e.data === window.YT.PlayerState.PLAYING) {
+            setIsPlaying(true);
+            setDuration(e.target.getDuration());
+          }
+          if (e.data === window.YT.PlayerState.PAUSED) {
+            setIsPlaying(false);
+          }
+        },
+      },
+    });
+  }, [ytReady]);
+
+  const startProgressTimer = () => {
+    clearInterval(progressInterval.current);
+    progressInterval.current = setInterval(() => {
+      if (!playerRef.current?.getCurrentTime) return;
+      try {
+        const cur = playerRef.current.getCurrentTime();
+        const dur = playerRef.current.getDuration();
+        setCurrentTime(cur);
+        setDuration(dur);
+        setProgress(dur > 0 ? (cur / dur) * 100 : 0);
+      } catch {}
+    }, 500);
+  };
+
+  // ── Load playlist ──────────────────────────────────────────────────────────
+  const handleLoadUrl = async (url: string) => {
+    setIsLoading(true);
+    setError("");
+    setTracks([]);
+    setIsPlaying(false);
+
+    const source = detectSource(url);
+
+    if (source === "spotify") {
+      // Spotify cannot be directly embedded without auth/SDK
+      // We surface a helpful explanation
+      setError(
+        "Spotify playlists require an API token. Paste a YouTube playlist URL, or add your Spotify Client ID to .env.local"
+      );
+      setIsLoading(false);
+      return;
     }
 
-    const updateDuration = () => {
-      setDuration(audio.duration)
-    }
+    if (source === "youtube") {
+      try {
+        const res = await fetch(`/api/playlist/youtube?url=${encodeURIComponent(url)}`);
 
-    const handleEnded = () => {
-      setIsPlaying(false)
-      setCurrentTime(0)
-    }
-
-    const handleLoadedData = () => {
-      setDuration(audio.duration)
-    }
-
-    audio.addEventListener("timeupdate", updateTime)
-    audio.addEventListener("loadedmetadata", updateDuration)
-    audio.addEventListener("loadeddata", handleLoadedData)
-    audio.addEventListener("ended", handleEnded)
-    audio.addEventListener("canplaythrough", updateDuration)
-
-    // Set initial volume
-    audio.volume = volume
-
-    return () => {
-      audio.removeEventListener("timeupdate", updateTime)
-      audio.removeEventListener("loadedmetadata", updateDuration)
-      audio.removeEventListener("loadeddata", handleLoadedData)
-      audio.removeEventListener("ended", handleEnded)
-      audio.removeEventListener("canplaythrough", updateDuration)
-    }
-  }, [volume])
-
-  const togglePlayPause = async () => {
-    const audio = audioRef.current
-    if (!audio) return
-
-    try {
-      if (isPlaying) {
-        audio.pause()
-        setIsPlaying(false)
-      } else {
-        await audio.play()
-        setIsPlaying(true)
+	const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await res.text(); // Ver el error real (HTML)
+        console.error("Respuesta no es JSON:", text);
+        throw new Error("El servidor no respondió con JSON. Revisa la consola.");
       }
-    } catch (error) {
-      console.error("Error playing audio:", error)
+
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error ?? "Failed to load playlist");
+          setIsLoading(false);
+          return;
+        }
+        if (!data.tracks?.length) {
+          setError("No playable tracks found in this playlist");
+          setIsLoading(false);
+          return;
+        }
+        setTracks(data.tracks);
+        setCurrentIndex(0);
+        setLoadedUrl(url);
+        // Auto-play first track
+        setTimeout(() => {
+          createPlayer(data.tracks[0].id);
+        }, 300);
+      } catch (err: any) {
+        setError(err.message ?? "Network error");
+      }
     }
-  }
 
-  const handleSeek = (time: number) => {
-    const audio = audioRef.current
-    if (!audio) return
+    setIsLoading(false);
+  };
 
-    audio.currentTime = time
-    setCurrentTime(time)
-  }
-
-  const handleSearch = (query: string) => {
-    if (!query.trim()) {
-      setFilteredSongs(sampleSongs)
-      return
+  // ── Playback controls ──────────────────────────────────────────────────────
+  const handlePlayPause = () => {
+    if (!playerRef.current) return;
+    if (isPlaying) {
+      playerRef.current.pauseVideo();
+    } else {
+      playerRef.current.playVideo();
     }
+  };
 
-    const filtered = sampleSongs.filter(
-      (song) =>
-        song.title.toLowerCase().includes(query.toLowerCase()) ||
-        song.number.toLowerCase().includes(query.toLowerCase()),
-    )
-    setFilteredSongs(filtered)
-  }
+  const handleNext = useCallback(() => {
+    setCurrentIndex((prev) => {
+      const next = (prev + 1) % tracks.length;
+      if (tracks[next]) createPlayer(tracks[next].id);
+      return next;
+    });
+  }, [tracks, createPlayer]);
 
-  const playSong = async (song: (typeof sampleSongs)[0]) => {
-    const audio = audioRef.current
-    if (!audio) return
-
-    setCurrentSong(song)
-    setShowPlayer(true)
-    setCurrentTime(0)
-    setIsPlaying(false)
-
-    // Reset audio
-    audio.currentTime = 0
-
-    try {
-      await audio.play()
-      setIsPlaying(true)
-    } catch (error) {
-      console.error("Error playing audio:", error)
+  const handlePrev = () => {
+    // If more than 3 seconds in, restart. Otherwise go back.
+    if (currentTime > 3 && playerRef.current) {
+      playerRef.current.seekTo(0);
+      setCurrentTime(0);
+      setProgress(0);
+      return;
     }
-  }
+    setCurrentIndex((prev) => {
+      const next = (prev - 1 + tracks.length) % tracks.length;
+      if (tracks[next]) createPlayer(tracks[next].id);
+      return next;
+    });
+  };
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = Number.parseFloat(e.target.value)
-    setVolume(newVolume)
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume
-    }
-  }
+  const handleSelectTrack = (index: number) => {
+    setCurrentIndex(index);
+    createPlayer(tracks[index].id);
+  };
+
+  const handleSeek = (pct: number) => {
+    if (!playerRef.current || !duration) return;
+    const time = (pct / 100) * duration;
+    playerRef.current.seekTo(time, true);
+    setCurrentTime(time);
+    setProgress(pct);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      clearInterval(progressInterval.current);
+      try { playerRef.current?.destroy(); } catch {}
+    };
+  }, []);
+
+  const current = tracks[currentIndex];
 
   return (
-    <div className="flex flex-col text-white relative overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-400/20 via-transparent to-transparent"></div>
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl"></div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
 
-      <audio ref={audioRef} src="/audio/song.mp3" preload="metadata" />
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-      <div className="relative z-10 flex flex-col h-full p-4 md:p-8">
-        {/* Header with Logo and Search */}
-        <div className="flex items-center justify-between mb-8 w-full">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Music className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">
-                XPlay
-              </span>
-              <p className="text-xs text-white/60">Music Player</p>
-            </div>
-          </div>
-
-          {/* Search Box */}
-          <SearchBox onSearch={handleSearch} placeholder="Buscar por título, letra o número" />
-        </div>
-
-        {showPlayer ? (
-          /* Player View */
-          <div className="flex-1 flex flex-col">
-            {/* Back Button */}
-            <button
-              onClick={() => setShowPlayer(false)}
-              className="flex items-center gap-2 mb-8 hover:text-purple-300 transition-colors group"
-            >
-              <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-              Back to library
-            </button>
-
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto text-center space-y-8">
-              {/* Album Art */}
-              <div className="w-64 h-64 bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl shadow-2xl flex items-center justify-center mb-8 animate-pulse">
-                <Music className="w-24 h-24 text-white/80" />
-              </div>
-
-              {/* Title Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-center gap-4">
-                  <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
-                    {currentSong.title}
-                  </h1>
-                  <button
-                    onClick={() => setIsLiked(!isLiked)}
-                    className={`p-2 rounded-full transition-all duration-300 hover:scale-110 ${
-                      isLiked ? "text-red-400" : "text-white/60 hover:text-red-400"
-                    }`}
-                  >
-                    <Heart className={`w-6 h-6 ${isLiked ? "fill-current" : ""}`} />
-                  </button>
-                </div>
-                <p className="text-xl text-purple-300 font-medium">{currentSong.number}</p>
-              </div>
-
-              {/* Section Indicator */}
-              <div className="py-4">
-                <span className="px-6 py-2 bg-white/10 backdrop-blur-md rounded-full text-lg font-light border border-white/20">
-                  coro
-                </span>
-              </div>
-
-              {/* Content Text */}
-              <div className="space-y-6 text-lg md:text-xl leading-relaxed max-w-3xl mx-auto text-white/80">
-                <p>
-                  It is a long established fact that a reader will be distracted by the readable content of a page when
-                  looking at its layout.
-                </p>
-                <p>
-                  The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as
-                  opposed to using 'Content here, content here', making it look like readable English.
-                </p>
-              </div>
-
-              {/* Audio Controls */}
-              <div className="pt-8 space-y-8 w-full max-w-2xl">
-                {/* Progress Bar */}
-                <ProgressBar currentTime={currentTime} duration={duration} onSeek={handleSeek} />
-
-                {/* Control Buttons */}
-                <div className="flex items-center justify-center gap-6">
-                  <button
-                    className="w-14 h-14 flex items-center justify-center hover:bg-white/10 rounded-full transition-all duration-300 hover:scale-110"
-                    disabled
-                  >
-                    <SkipBack className="w-6 h-6 fill-current text-white/60" />
-                  </button>
-
-                  <button
-                    onClick={togglePlayPause}
-                    className="w-20 h-20 flex items-center justify-center bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 rounded-full transition-all duration-300 hover:scale-110 shadow-2xl"
-                  >
-                    {isPlaying ? (
-                      <Pause className="w-8 h-8 fill-current" />
-                    ) : (
-                      <Play className="w-8 h-8 fill-current ml-1" />
-                    )}
-                  </button>
-
-                  <button
-                    className="w-14 h-14 flex items-center justify-center hover:bg-white/10 rounded-full transition-all duration-300 hover:scale-110"
-                    disabled
-                  >
-                    <SkipForward className="w-6 h-6 fill-current text-white/60" />
-                  </button>
-                </div>
-
-                {/* Volume Control */}
-                <div className="flex items-center justify-center gap-4 pt-4">
-                  <Volume2 className="w-5 h-5 text-white/60" />
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={volume}
-                    onChange={handleVolumeChange}
-                    className="w-32 h-2 bg-white/20 rounded-full appearance-none cursor-pointer slider"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* Song List View */
-          <div className="flex-1 flex flex-col items-center">
-            <div className="w-full max-w-3xl">
-              <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
-                    Your Library
-                  </h2>
-                  <span className="text-sm text-white/60">{filteredSongs.length} songs</span>
-                </div>
-                <div className="space-y-3">
-                  {filteredSongs.map((song) => (
-                    <SongListItem
-                      key={song.id}
-                      id={song.id}
-                      title={song.title}
-                      number={song.number}
-                      isCurrentSong={currentSong.id === song.id}
-                      onPlay={() => playSong(song)}
-                    />
-                  ))}
-                  {filteredSongs.length === 0 && (
-                    <div className="text-center py-12">
-                      <Music className="w-12 h-12 text-white/30 mx-auto mb-4" />
-                      <p className="text-white/60">No songs found</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: linear-gradient(45deg, #a855f7, #ec4899);
-          cursor: pointer;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        body {
+          font-family: 'Syne', sans-serif;
+          background: #0d0d14;
+          color: #fff;
+          min-height: 100vh;
+          overflow-x: hidden;
         }
-        .slider::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
+
+        .bg {
+          position: fixed; inset: 0; z-index: 0;
+          background:
+            radial-gradient(ellipse 70% 60% at 20% 30%, rgba(196,77,255,0.18) 0%, transparent 60%),
+            radial-gradient(ellipse 60% 50% at 80% 70%, rgba(255,107,157,0.15) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 40% at 50% 10%, rgba(100,180,255,0.1) 0%, transparent 60%),
+            #0d0d14;
+        }
+	
+	a {font-weight:semibold;color:violet;}
+	a:hover{color:cyan;}
+	
+        /* Noise overlay */
+        .bg::after {
+          content: "";
+          position: absolute; inset: 0;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+          opacity: 0.04;
+          pointer-events: none;
+        }
+
+        .app {
+          position: relative; z-index: 1;
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+          display: flex; align-items: center; gap: 10px;
+          padding: 20px 32px;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .logo {
+          width: 36px; height: 36px;
+          background: linear-gradient(135deg, #ff6b9d, #c44dff);
+          border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 18px;
+        }
+        .logo-text {
+          font-size: 20px; font-weight: 800; letter-spacing: -0.5px;
+        }
+        .logo-sub {
+          font-size: 11px; color: rgba(255,255,255,0.4);
+          font-family: 'DM Mono', monospace;
+          letter-spacing: 1px; text-transform: uppercase;
+        }
+        .header-right {
+          margin-left: auto;
+          display: flex; align-items: center; gap: 8px;
+        }
+        .status-dot {
+          width: 7px; height: 7px; border-radius: 50%;
+          background: ${isPlaying ? "#1ed760" : "rgba(255,255,255,0.2)"};
+          transition: background 0.3s;
+          ${isPlaying ? "box-shadow: 0 0 8px #1ed760;" : ""}
+        }
+        .status-label {
+          font-size: 11px; color: rgba(255,255,255,0.4);
+          font-family: 'DM Mono', monospace; letter-spacing: 0.5px;
+        }
+
+        /* Main layout */
+        .main {
+          flex: 1;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0;
+          align-items: start;
+          padding: 40px 32px;
+          max-width: 1100px;
+          margin: 0 auto;
+          width: 100%;
+        }
+
+        /* Left — mascot */
+        .mascot-col {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 24px;
+          padding: 20px;
+          position: sticky;
+          top: 60px;
+        }
+        .mascot-stage {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+        }
+        .mascot-label {
+          font-size: 12px;
+          color: rgba(255,255,255,0.35);
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+          font-family: 'DM Mono', monospace;
+        }
+        .aura {
+          position: relative;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .aura::before {
+          content: "";
+          position: absolute;
+          width: 260px; height: 260px;
           border-radius: 50%;
-          background: linear-gradient(45deg, #a855f7, #ec4899);
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+          background: ${isPlaying
+            ? "radial-gradient(circle, rgba(196,77,255,0.2) 0%, transparent 70%)"
+            : "radial-gradient(circle, rgba(100,100,150,0.1) 0%, transparent 70%)"};
+          transition: background 0.8s ease;
+          animation: ${isPlaying ? "auraPulse 1.2s ease-in-out infinite alternate" : "none"};
+        }
+        @keyframes auraPulse {
+          from { transform: scale(0.9); opacity: 0.7; }
+          to   { transform: scale(1.1); opacity: 1; }
+        }
+
+        .current-track-label {
+          text-align: center;
+          max-width: 300px;
+        }
+        .current-track-label .ct-title {
+          font-size: 17px; font-weight: 700;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .current-track-label .ct-artist {
+          font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 4px;
+        }
+
+        /* Right — controls */
+        .controls-col {
+          display: flex;
+          flex-direction: column;
+          gap: 28px;
+          padding: 20px;
+        }
+
+        /* Command input area */
+        .cmd-section {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .cmd-label {
+          font-size: 11px; font-weight: 600;
+          color: rgba(255,255,255,0.3);
+          letter-spacing: 1.2px; text-transform: uppercase;
+          font-family: 'DM Mono', monospace;
+        }
+
+        /* Error */
+        .error-banner {
+          padding: 12px 16px;
+          background: rgba(255,80,80,0.1);
+          border: 1px solid rgba(255,80,80,0.2);
+          border-radius: 12px;
+          font-size: 13px;
+          color: #ff8099;
+          line-height: 1.5;
+        }
+
+        /* Empty state */
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 24px;
+          padding: 60px 20px;
+          text-align: center;
+        }
+        .empty-state h2 {
+          font-size: 28px; font-weight: 800;
+          background: linear-gradient(135deg, #ff6b9d, #c44dff, #88ccff);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          line-height: 1.2;
+        }
+        .empty-state p {
+          font-size: 14px; color: rgba(255,255,255,0.4);
+          max-width: 380px; line-height: 1.6;
+        }
+        .cmd-examples {
+          display: flex; flex-direction: column; gap: 6px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 12px;
+          padding: 14px 18px;
+          text-align: left;
+          width: 100%; max-width: 400px;
+        }
+        .cmd-example {
+          font-size: 12px;
+          font-family: 'DM Mono', monospace;
+          color: rgba(255,255,255,0.5);
+          display: flex; gap: 8px;
+        }
+        .cmd-example .cmd { color: #c44dff; }
+        .cmd-example .arg { color: #ff6b9d; }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+          .main {
+            grid-template-columns: 1fr;
+            padding: 20px 16px;
+          }
+          .mascot-col { position: static; }
         }
       `}</style>
-    </div>
-  )
+
+      {/* Hidden YT player */}
+      <div ref={ytContainerRef} style={{ position: "fixed", opacity: 0, pointerEvents: "none", top: "-9999px" }}/>
+
+      <div className="bg"/>
+      <div className="app">
+        {/* Header */}
+        <header className="header">
+          <div className="logo">🎵</div>
+          <div>
+            <div className="logo-text">XPlay</div>
+            <div className="logo-sub">Music Player</div>
+          </div>
+          <div className="header-right">
+            <div className="status-dot"/>
+            <span className="status-label">
+              {isPlaying ? "Now Playing" : tracks.length > 0 ? "Paused" : "Idle"}
+            </span>
+          </div>
+        </header>
+
+        {/* Main */}
+        <main className="main">
+          {/* Left — Mascot */}
+          <div className="mascot-col">
+            <div className="mascot-stage">
+              <div className="aura">
+                <CatMascot isPlaying={isPlaying}/>
+              </div>
+              <span className="mascot-label">
+                {isPlaying ? "🎵 Vibing..." : tracks.length > 0 ? "😢 Paused..." : "Waiting for music..."}
+              </span>
+              {current && (
+                <div className="current-track-label">
+                  <div className="ct-title">{current.title}</div>
+                  <div className="ct-artist">{current.artist}</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right — Controls */}
+          <div className="controls-col">
+            <div className="cmd-section">
+              <div className="cmd-label">▸ Load Playlist</div>
+              <UrlInput onLoad={handleLoadUrl} isLoading={isLoading}/>
+            </div>
+
+            {error && <div className="error-banner">⚠ {error}</div>}
+
+            {tracks.length === 0 && !error && (
+              <div className="cmd-examples">
+                <div className="cmd-example">
+                  <span className="arg">youtube.com/playlist?list=...</span>
+                </div>
+                <div className="cmd-example">
+                  <span className="arg">youtube.com/watch?v=...</span>
+                </div> 
+                <div className="cmd-example">
+                  <span className="arg">Spotify coming soon - bcause no money</span>
+                </div>
+                <div className="cmd-example">
+                  <span className="cmd">credits: <a href="https://www.freepik.com/author/catalyststuff" className="text-bold hover:text-cyan">@catalyststuff</a> - vector pet</span>
+                </div>
+              </div>
+            )}
+
+            {tracks.length > 0 && (
+              <PlayerControls
+                tracks={tracks}
+                currentIndex={currentIndex}
+                isPlaying={isPlaying}
+                onPlayPause={handlePlayPause}
+                onNext={handleNext}
+                onPrev={handlePrev}
+                onSelectTrack={handleSelectTrack}
+                progress={progress}
+                currentTime={currentTime}
+                duration={duration}
+                onSeek={handleSeek}
+              />
+            )}
+          </div>
+        </main>
+      </div>
+    </>
+  );
 }
