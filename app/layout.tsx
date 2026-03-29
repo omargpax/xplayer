@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Analytics } from "@vercel/analytics/next"
 import './globals.css'
 import Footer from "../components/footer"
 
@@ -58,6 +59,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900">
         {children}
         <Footer/>
+        <Analytics />
       </body>
     </html>
   )
