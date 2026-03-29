@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 // URL del microservicio Python en Railway.
 // Configúrala en Vercel → Settings → Environment Variables:
 //   DOWNLOADER_URL = https://tu-servicio.up.railway.app
-const DOWNLOADER_URL = process.env.NEXT_PUBLIC_DOWNLOADER_URL;
+const DOWNLOADER_URL = process.env.DOWNLOADER_URL;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
