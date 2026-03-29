@@ -26,9 +26,11 @@ export async function GET(req: NextRequest) {
     );
 
     if (!railwayResponse.ok) {
-      const errorText = await railwayResponse.text();
+      const errorData = await railwayResponse.json().catch(() => ({}));
+      // Extraemos solo el mensaje importante
+      const cleanMessage = errorData.detail?.split(':').pop() || "YouTube limitó la descarga. Intenta en unos minutos.";
       return NextResponse.json(
-        { error: `Railway Error: ${errorText.slice(0, 100)}` },
+        { error: cleanMessage },
         { status: railwayResponse.status }
       );
     }
