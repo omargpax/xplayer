@@ -14,7 +14,6 @@ function detectSource(url: string): "youtube" | "spotify" | "unknown" {
 }
 
 // ─── YouTube iframe embed player hook ────────────────────────────────────────
-// Uses YouTube IFrame API for actual playback
 declare global {
   interface Window {
     YT: any;
@@ -38,6 +37,12 @@ export default function XPlayPage() {
   const progressInterval = useRef<any>(null);
   const [ytReady, setYtReady] = useState(false);
 
+  // Solución al Stale Closure: Guardar una referencia fresca de los tracks
+  const tracksRef = useRef<Track[]>([]);
+  useEffect(() => {
+    tracksRef.current = tracks;
+  }, [tracks]);
+
   // ── Load YouTube IFrame API ────────────────────────────────────────────────
   useEffect(() => {
     if (window.YT && window.YT.Player) { setYtReady(true); return; }
@@ -51,9 +56,14 @@ export default function XPlayPage() {
   // ── Create/destroy YT player ───────────────────────────────────────────────
   const createPlayer = useCallback((videoId: string) => {
     if (!ytReady || !ytContainerRef.current) return;
+    
+    // Limpiar intervalo de tiempo anterior para no causar fugas
+    clearInterval(progressInterval.current);
+
     if (playerRef.current) {
       try { playerRef.current.destroy(); } catch { }
     }
+    
     playerRef.current = new window.YT.Player(ytContainerRef.current, {
       height: "0",
       width: "0",
@@ -68,7 +78,12 @@ export default function XPlayPage() {
         onStateChange: (e: any) => {
           // 0 = ended, 1 = playing, 2 = paused
           if (e.data === window.YT.PlayerState.ENDED) {
-            handleNext();
+            // Usamos la referencia actualizada para que sepa exactamente a qué índice ir
+            setCurrentIndex((prev) => {
+              const currentTracks = tracksRef.current;
+              if (currentTracks.length === 0) return prev;
+              return (prev + 1) % currentTracks.length;
+            });
           }
           if (e.data === window.YT.PlayerState.PLAYING) {
             setIsPlaying(true);
@@ -81,7 +96,14 @@ export default function XPlayPage() {
       },
     });
   }, [ytReady]);
-
+  
+  // ── Efecto maestro que arranca la canción si el índice cambia ──────────────
+  useEffect(() => {
+    if (ytReady && tracks.length > 0 && tracks[currentIndex]) {
+      createPlayer(tracks[currentIndex].id);
+    }
+  }, [currentIndex, ytReady, tracks, createPlayer]);
+  
   const startProgressTimer = () => {
     clearInterval(progressInterval.current);
     progressInterval.current = setInterval(() => {
@@ -106,8 +128,6 @@ export default function XPlayPage() {
     const source = detectSource(url);
 
     if (source === "spotify") {
-      // Spotify cannot be directly embedded without auth/SDK
-      // We surface a helpful explanation
       setError(
         "Spotify playlists require an API token. Paste a YouTube playlist URL, or add your Spotify Client ID to .env.local"
       );
@@ -121,7 +141,7 @@ export default function XPlayPage() {
 
         const contentType = res.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-          const text = await res.text(); // Ver el error real (HTML)
+          const text = await res.text();
           console.error("Respuesta no es JSON:", text);
           throw new Error("El servidor no respondió con JSON. Revisa la consola.");
         }
@@ -137,13 +157,12 @@ export default function XPlayPage() {
           setIsLoading(false);
           return;
         }
+        
+        // Al actualizar esto, el `useEffect` maestro creará el reproductor automáticamente
         setTracks(data.tracks);
         setCurrentIndex(0);
         setLoadedUrl(url);
-        // Auto-play first track
-        setTimeout(() => {
-          createPlayer(data.tracks[0].id);
-        }, 300);
+        
       } catch (err: any) {
         setError(err.message ?? "Network error");
       }
@@ -164,30 +183,25 @@ export default function XPlayPage() {
 
   const handleNext = useCallback(() => {
     setCurrentIndex((prev) => {
-      const next = (prev + 1) % tracks.length;
-      if (tracks[next]) createPlayer(tracks[next].id);
-      return next;
+      if (tracks.length === 0) return prev;
+      return (prev + 1) % tracks.length;
     });
-  }, [tracks, createPlayer]);
+  }, [tracks.length]);
 
   const handlePrev = () => {
-    // If more than 3 seconds in, restart. Otherwise go back.
     if (currentTime > 3 && playerRef.current) {
       playerRef.current.seekTo(0);
-      setCurrentTime(0);
-      setProgress(0);
       return;
     }
     setCurrentIndex((prev) => {
-      const next = (prev - 1 + tracks.length) % tracks.length;
-      if (tracks[next]) createPlayer(tracks[next].id);
-      return next;
+      if (tracks.length === 0) return prev;
+      return (prev - 1 + tracks.length) % tracks.length;
     });
   };
 
   const handleSelectTrack = (index: number) => {
     setCurrentIndex(index);
-    createPlayer(tracks[index].id);
+    // Ya no necesitas llamar a createPlayer aquí, el useEffect se encarga.
   };
 
   const handleSeek = (pct: number) => {
@@ -231,10 +245,10 @@ export default function XPlayPage() {
             radial-gradient(ellipse 50% 40% at 50% 10%, rgba(100,180,255,0.1) 0%, transparent 60%),
             #0d0d14;
         }
-	
-	      a {font-weight:semibold;color:violet;}
-	      a:hover{color:cyan;}
-	
+    
+          a {font-weight:semibold;color:violet;}
+          a:hover{color:cyan;}
+    
         /* Noise overlay */
         .bg::after {
           content: "";
