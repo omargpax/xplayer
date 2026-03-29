@@ -36,8 +36,8 @@ export default function UrlInput({ onLoad, isLoading }: UrlInputProps) {
   };
 
   const examples = [
-    { label: "Youtube Playlist", icon: <span style={{display: 'inline-flex', alignItems: 'center'}}><Play size={14} /></span>, url: "https://youtube.com/playlist?list=..." },
-    { label: "Youtube song", icon: <span style={{display: 'inline-flex', alignItems: 'center'}}><Music size={14} /></span>, url: "youtube.com/watch?v=..." },
+    { label: "YouTube Playlist", icon: <span style={{display: 'inline-flex', alignItems: 'center'}}><Play size={14} /></span>, url: "https://youtube.com/playlist?list=..." },
+    { label: "YouTube Song", icon: <span style={{display: 'inline-flex', alignItems: 'center'}}><Music size={14} /></span>, url: "youtube.com/watch?v=..." },
   ];
 
   return (
@@ -150,14 +150,14 @@ export default function UrlInput({ onLoad, isLoading }: UrlInputProps) {
 
       {error && <div className="error-msg"><span style={{display: 'inline-flex', alignItems: 'center', gap: '4px'}}><AlertTriangle size={14} /> {error}</span></div>}
 
-      <div className="url-hints">
+      <div className="url-hints select-none">
         {examples.map((ex) => (
           <div key={ex.label} className="hint-chip">
-            <span className="hint-icon">{ex.icon}</span>
+            <span className="hint-icon mb-[-5px]">{ex.icon}</span>
             {ex.label}
           </div>
         ))}
-        <div className="hint-chip">No login required</div>
+        <div className="hint-chip">No login</div>
       </div>
     </div>
   );

@@ -165,7 +165,7 @@ export default function PetMascot({ isPlaying }: PetMascotProps) {
       `}</style>
 
       {/* Sprite */}
-      <div className="pet-wrapper">
+      <div className="pet-wrapper select-none">
         <img
           src={pet.idlePath}
           alt={`${pet.label} idle`}
