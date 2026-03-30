@@ -364,6 +364,7 @@ export default function XPlayPage() {
                 <div className="cmd-example"><span className="arg">youtube.com/playlist?list=...</span></div>
                 <div className="cmd-example"><span className="arg">youtube.com/watch?v=...</span></div>
                 <div className="cmd-example"><span className="cmd">Spotify coming soon - bcause no money</span></div>
+                <div className="cmd-example"><span className="text-green-400"> <b>Tip:</b> Install adBlock to avoid interruptions</span></div>
               </div>
             )}
 

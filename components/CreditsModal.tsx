@@ -31,16 +31,16 @@ const CreditsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
         {/* Content Area */}
         <div className="flex-1 p-8 overflow-y-auto text-gray-300 scroll-smooth leading-relaxed">
           <div className="space-y-8">
-            <h3 className="text-xl font-semibold text-white">XPlay wouldn&apos;t look as charming without the help of talented artists.</h3>
+            <h3 className="text-xl font-semibold text-gray">XPlay wouldn&apos;t look as charming without the help of talented artists.</h3>
             
-            <section className="p-6 border rounded-xl border-purple-500/10 bg-purple-500/5 transition-all hover:border-purple-500/30">
+            <section className="p-4 border rounded-xl border-purple-500/10 bg-purple-500/5 transition-all hover:border-purple-500/30">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-white/5 rounded-full border border-purple-500/20 text-purple-400">
                   <Palette size={20} />
                 </div>
                 <div>
-                  <h4 className="text-lg font-medium text-white mb-1">Illustration Cat (Vector Art)</h4>
-                  <p className="text-sm mb-4">The lovable meditating and dancing cat was crafted by:</p>
+                  <h4 className="text-lg font-medium text-white mb-1">Illustration pets (Vector Art)</h4>
+                  <p className="text-sm mb-2">The lovable pets was crafted by:</p>
                   
                   {/* Clickable Author Handle */}
                   <a
