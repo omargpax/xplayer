@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Lock } from "lucide-react";
 
-interface PetMascotProps {
+interface PetProps {
   isPlaying: boolean;
 }
 
-const FPS = 8;
+const FPS = 10;
 const FRAME_INTERVAL = 1000 / FPS;
 
 const PETS = [
@@ -22,14 +22,14 @@ const PETS = [
     available: true,
   },
   {
-    id: "bear",
-    label: "Bear",
-    emoji: "🐻",
+    id: "cow",
+    label: "Cow",
+    emoji: "🐮️",
     dancingMax: 35,
     dancingPath: (n: number) =>
-      `/assets/bear/dancing/frame_${n.toString().padStart(3, "0")}.png`,
-    idlePath: "/assets/bear/meditar.png",
-    available: false,
+      `/assets/cow/dancing/frame_${n.toString().padStart(3, "0")}.png`,
+    idlePath: "/assets/cow/meditar.png",
+    available: true,
   },
   {
     id: "frog",
@@ -43,7 +43,7 @@ const PETS = [
   },
 ];
 
-export default function PetMascot({ isPlaying }: PetMascotProps) {
+export default function PetAnimation({ isPlaying }: PetProps) {
   const [petIndex, setPetIndex] = useState(0);
   const [currentFrame, setCurrentFrame] = useState(0);
 
@@ -165,7 +165,7 @@ export default function PetMascot({ isPlaying }: PetMascotProps) {
       `}</style>
 
       {/* Sprite */}
-      <div className="pet-wrapper select-none">
+      <div className="select-none pet-wrapper">
         <img
           src={pet.idlePath}
           alt={`${pet.label} idle`}

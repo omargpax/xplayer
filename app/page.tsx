@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Music, Heart, Play, ListMusic } from 'lucide-react';
-import CatMascot from "@/components/CatMascot";
+import ControlPet from "@/components/ControlPet";
 import UrlInput from "@/components/UrlInput";
 import PlayerControls, { Track } from "@/components/PlayerControls";
 
@@ -331,7 +331,7 @@ export default function XPlayPage() {
           <div className="mascot-col">
             <div className="mascot-stage">
               <div className="aura">
-                <CatMascot isPlaying={isPlaying} />
+                <ControlPet isPlaying={isPlaying} />
               </div>
               <span className="mascot-label">
                 {isPlaying

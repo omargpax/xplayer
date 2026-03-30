@@ -6,7 +6,7 @@ import Footer from "../components/footer"
 export const metadata = {
   metadataBase: new URL('https://xplay.omargpax.dev'),
   manifest: '/manifest.json',
-  title: " Xplay",
+  title: " Xplayer - Music Player",
   description: "Xplay is a music player built with React,Tailwind CSS and Vite. It features a sleek and modern design, with a focus on simplicity and ease of use. With Xplay, you can easily manage your music library, create playlists, and enjoy your favorite tunes in style.",
   author: "Omar A. Guerrero",
   icons: {
