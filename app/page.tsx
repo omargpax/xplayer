@@ -33,6 +33,7 @@ function saveFavoritesToStorage(favs: Track[]) {
 }
 
 export default function XPlayPage() {
+  const [copied, setCopied] = useState(false);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -365,6 +366,39 @@ export default function XPlayPage() {
                 <div className="cmd-example"><span className="arg">youtube.com/watch?v=...</span></div>
                 <div className="cmd-example"><span className="cmd">Spotify coming soon - bcause no money</span></div>
                 <div className="cmd-example"><span className="text-green-400"> <b>Tip:</b> Install adBlock to avoid interruptions</span></div>
+
+                {/* Suggested playlist */}
+                <div style={{ marginTop: "10px", borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "10px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", fontFamily: "'DM Mono', monospace", letterSpacing: "0.8px", textTransform: "uppercase" }}>
+                    🎵 Try this with 🐮
+                  </span>
+                  <code style={{ fontSize: "11px", color: "#c44dff", fontFamily: "'DM Mono', monospace", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    &gt;&gt;&gt;
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText("https://www.youtube.com/watch?v=CdZN8PI3MqM&list=RDCdZN8PI3MqM&start_radio=1");
+                      // brief visual feedback via state
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1800);
+                    }}
+                    style={{
+                      padding: "5px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(196,77,255,0.35)",
+                      background: copied ? "rgba(196,77,255,0.25)" : "rgba(196,77,255,0.1)",
+                      color: copied ? "#fff" : "#c44dff",
+                      fontSize: "11px",
+                      fontFamily: "'DM Mono', monospace",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      flexShrink: 0,
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    {copied ? "✓ Copied!" : "Copy URL"}
+                  </button>
+                </div>
               </div>
             )}
 
