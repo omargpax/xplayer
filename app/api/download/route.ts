@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Reemplaza tu antigua variable DOWNLOADER_URL por la clave de RapidAPI
-// Configúrala en Vercel → Settings → Environment Variables:
-// RAPIDAPI_KEY = tu_clave_secreta_aqui
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 
 // 1. Función auxiliar para extraer el ID exacto del video (RapidAPI no acepta URLs completas)
@@ -44,7 +41,7 @@ export async function GET(req: NextRequest) {
     const rapidResponse = await fetch(rapidApiUrl, options);
     
     if (!rapidResponse.ok) {
-      // Si llegas al límite de los 300 requests, RapidAPI devolverá un error aquí
+      //  límite de los 300 requests, api devolverá un error aquí
       return NextResponse.json(
         { error: "La API de descarga falló o llegó a su límite. Intenta más tarde." },
         { status: rapidResponse.status }
@@ -62,7 +59,6 @@ export async function GET(req: NextRequest) {
     }
 
     // 4. Redirigimos al usuario al link final del MP3
-    // Esto hará que el navegador inicie la descarga automáticamente
     return NextResponse.redirect(data.link);
 
   } catch (error: any) {
